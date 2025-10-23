@@ -1,0 +1,78 @@
+# Wails
+/build
+/frontend/dist
+/frontend/wailsjs
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+*.test
+*.out
+*.prof
+go.sum
+
+# Binaries for programs and plugins
+bin/
+obj/
+*.o
+*.a
+*.lib
+
+# Temporary files
+tmp/
+*.tmp
+*.log
+
+# Node / Frontend
+node_modules/
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log
+package-lock.json
+dist/
+.env.local
+.env.*.local
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-workspace
+*.sublime-project
+.eslintcache
+
+# OS
+.DS_Store
+Thumbs.db
+.env
+.env.*.local
+
+# Build outputs
+*.app/
+dist/
+
+# Development
+.cache/
+coverage/
+
+# Misc
+.history/
+*.bak
+*.swp
+*.swo
+*~
+.env
+.env.local
+.env.*.local
+
+# Game-related temp files
+downloads/
+temp/
+cache/

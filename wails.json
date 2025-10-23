@@ -1,0 +1,12 @@
+{
+  "name": "fitgirl-launcher",
+  "outputfilename": "fitgirl-launcher",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Saadiq",
+    "email": "101512821+Saadiq8149@users.noreply.github.com"
+  }
+}
