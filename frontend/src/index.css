@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+* {
+    font-family: "Inter";
+}
+
+html {
+    background-color: rgb(20, 20, 20);
+}
+
+@layer utilities {
+    /* Custom scrollbar styles */
+    .scrollbar-custom::-webkit-scrollbar {
+        height: 8px;
+        width: 2px;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-thumb {
+        background-color: rgb(255, 255, 255); /* Tailwind gray-700 */
+        border-radius: 2px;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-track {
+        background-color: rgb(0, 0, 0); /* Tailwind gray-800 */
+    }
+}

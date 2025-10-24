@@ -1,16 +1,18 @@
 package handlers
 
 import (
+	"fitgirl-launcher/models"
 	"fitgirl-launcher/utils"
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
+	"path/filepath"
 	"time"
 )
 
 type InstallHandler struct {
-	TorrentHandler *TorrentHandler
+	TorrentHandler         *TorrentHandler
+	CurrentInstallationPID int
 }
 
 func CreateInstallHandler(th *TorrentHandler) *InstallHandler {
@@ -19,7 +21,12 @@ func CreateInstallHandler(th *TorrentHandler) *InstallHandler {
 	}
 }
 
-func (ih *InstallHandler) InstallRepack(magnet string) error {
+func (ih *InstallHandler) InstallRepack(magnet string, outputDir string) error {
+
+	if ih.CurrentInstallationPID != 0 {
+		return fmt.Errorf("another installation is in progress")
+	}
+
 	torrent, err := ih.TorrentHandler.GetTorrent(magnet)
 	if err != nil {
 		return err
@@ -29,25 +36,31 @@ func (ih *InstallHandler) InstallRepack(magnet string) error {
 		return fmt.Errorf("torrent not found")
 	}
 
-	if torrent.State != utils.TORRENTUPLOADING && torrent.State != utils.TORRENTSTALLEDUPLOAD {
+	if torrent.State != utils.TORRENT_UPLOADING && torrent.State != utils.TORRENT_STALLED_UPLOAD {
 		return fmt.Errorf("torrent still downlaoding")
 	}
 
-	installerFilePath := fmt.Sprintf("%s/%s", torrent.ContentPath, "setup.exe")
+	cmd := exec.Command(
+		filepath.Join(torrent.ContentPath, "setup.exe"),
+		"/VERYSILENT", "/SP-", "/NOCANCEL", "/NORESTART", "/SUPPRESSMSGBOXES",
+		"/DIR="+outputDir, "COMPONENTS=text",
+	)
 
-	fmt.Println("Path: ", installerFilePath)
+	// cmd := exec.Command(
+	// 	filepath.Join(torrent.ContentPath, "setup.exe"), "/SUPPRESSMSGBOXES",
+	// )
+	cmd.Dir = torrent.ContentPath // crucial
 
-	gameName := strings.Split(torrent.ContentPath, `\`)[len(strings.Split(torrent.ContentPath, `\`))-1]
-
-	err = exec.Command(installerFilePath, "/VERYSILENT", "/SP-", "/NOCANCEL", "/NORESTART", "/SUPPRESSMSGBOXES", "/COMPONENTS=text", `/DIR=D:\Games\Fitgirl-Launcher\`+gameName).Start()
-
+	err = cmd.Start()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to start installer: %w", err)
 	}
 
-	time.Sleep(1 * time.Second)
+	ih.CurrentInstallationPID = cmd.Process.Pid
 
-	err = exec.Command("./SoundVolumeView.exe", "/Mute", "setup.tmp").Start()
+	time.Sleep(5 * time.Second)
+
+	err = exec.Command(`C:\Users\shaik\fitgirl-launcher\SoundVolumeView.exe`, "/Mute", "setup.tmp").Start()
 
 	if err != nil {
 		return err
@@ -55,11 +68,48 @@ func (ih *InstallHandler) InstallRepack(magnet string) error {
 
 	time.Sleep(5 * time.Second)
 
-	err = os.RemoveAll(`D:\Games\Fitgirl-Launcher\` + gameName + `\_Redist`)
+	err = os.RemoveAll(outputDir + string(os.PathSeparator) + "_Redist")
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (ih *InstallHandler) IsInstallationError(game models.Game) bool {
+	// If game status says it's installing but we have no installation PID, that's an error
+	if game.Status == utils.DB_INSTALLING && ih.CurrentInstallationPID == 0 {
+		return true
+	}
+
+	if game.Status == utils.DB_INSTALLING && ih.CurrentInstallationPID != 0 && !utils.IsProcessRunning(ih.CurrentInstallationPID) {
+		return true
+	}
+
+	return false
+}
+
+func (ih *InstallHandler) IsInstallationCompleted(game models.Game) bool {
+	if ih.CurrentInstallationPID == 0 {
+		return false
+	}
+
+	if game.Status != utils.DB_INSTALLING {
+		fmt.Printf("DEBUG: Game status is not DB_INSTALLING (status: %v), returning false\n", game.Status)
+		return false
+	}
+
+	processRunning := utils.IsProcessRunning(ih.CurrentInstallationPID)
+
+	if !processRunning && ih.CurrentInstallationPID != 0 {
+		ih.CurrentInstallationPID = 0
+		return true
+	}
+
+	return false
+}
+
+func (ih *InstallHandler) IsInstallationInProgress() bool {
+	return ih.CurrentInstallationPID != 0
 }

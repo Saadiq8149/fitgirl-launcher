@@ -4,7 +4,7 @@ type FitgirlRepack struct {
 	Name         string
 	OriginalSize string
 	RepackSize   string
-	Genres       []string
+	Screenshots  []string
 	Sources      []string
 	CoverImage   string
 }

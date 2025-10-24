@@ -68,13 +68,6 @@ func (fs *FitgirlScraperHandler) GetRepackDetails(gameUrl string) models.Fitgirl
 		style := e.Attr("style")
 
 		if strings.Contains(style, "height") {
-			genres := []string{}
-
-			e.ForEach("a", func(_ int, e *colly.HTMLElement) {
-				genres = append(genres, e.Text)
-			})
-
-			repack.Genres = genres
 			sizeRegex := regexp.MustCompile("[0-9]+.?[0-9]? (GB|MB)")
 
 			sizeMatches := sizeRegex.FindAllString(e.Text, -1)

@@ -2,7 +2,9 @@ package main
 
 import (
 	"embed"
+	"fitgirl-launcher/handlers"
 
+	"github.com/superturkey650/go-qbittorrent/qbt"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 )
@@ -17,6 +19,16 @@ func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
+	qb := qbt.NewClient("http://localhost:8080")
+	dh := handlers.NewDatabaseHandler()
+	fs := handlers.CreateFitgirlScraperHandler()
+	th := handlers.CreateTorrentHandler(qb, dh)
+	ih := handlers.CreateInstallHandler(th)
+	sh := handlers.CreateSyncHandler(dh, th, ih)
+	gh := handlers.CreateGameHandler()
+
+	go sh.Sync()
+
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:            "wails-events",
@@ -27,6 +39,12 @@ func main() {
 		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
+			fs,
+			th,
+			ih,
+			dh,
+			sh,
+			gh,
 		},
 	})
 

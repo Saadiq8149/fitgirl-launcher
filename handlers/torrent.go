@@ -1,30 +1,52 @@
 package handlers
 
 import (
+	"fitgirl-launcher/models"
 	"fitgirl-launcher/utils"
 	"fmt"
-	"regexp"
-	"strings"
+	"os"
 
 	"github.com/superturkey650/go-qbittorrent/qbt"
 )
 
 type TorrentHandler struct {
-	Client *qbt.Client
+	Client          *qbt.Client
+	DatabaseHandler *DatabaseHandler
 }
 
-func CreateTorrentHandler(qb *qbt.Client) *TorrentHandler {
+func CreateTorrentHandler(qb *qbt.Client, dh *DatabaseHandler) *TorrentHandler {
 	return &TorrentHandler{
-		Client: qb,
+		Client:          qb,
+		DatabaseHandler: dh,
 	}
 }
 
-func (th *TorrentHandler) AddTorrent(magnet string) error {
+func (th *TorrentHandler) AddTorrent(magnet string, repack models.FitgirlRepack, url string) error {
 	if err := th.Client.DownloadLinks([]string{magnet}, qbt.DownloadOptions{
 		Category: &utils.FITGIRLCATEGORY,
 	}); err != nil {
 		return err
 	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %v", err)
+	}
+
+	game := models.Game{
+		Title:       repack.Name,
+		InstallPath: homeDir + string(os.PathSeparator) + "fitgirl-repacks" + string(os.PathSeparator) + "games" + string(os.PathSeparator) + repack.Name,
+		Thumbnail:   repack.CoverImage,
+		Size:        repack.RepackSize,
+		Url:         url,
+		Magnet:      magnet,
+		Status:      utils.DB_DOWNLOADING,
+	}
+
+	if err := th.DatabaseHandler.AddGameToDatabase(game); err != nil {
+		return fmt.Errorf("failed to add game to database: %v", err)
+	}
+
 	return nil
 }
 
@@ -40,7 +62,7 @@ func (th *TorrentHandler) GetTorrents() ([]qbt.TorrentInfo, error) {
 }
 
 func (th *TorrentHandler) GetTorrent(magnet string) (*qbt.TorrentInfo, error) {
-	infoHash := th.infoHashFromMagnet(magnet)
+	infoHash := utils.InfoHashFromMagnet(magnet)
 
 	if infoHash == "" {
 		return nil, fmt.Errorf("invalid magnet link")
@@ -64,7 +86,7 @@ func (th *TorrentHandler) GetTorrent(magnet string) (*qbt.TorrentInfo, error) {
 }
 
 func (th *TorrentHandler) RemoveTorrent(magnet string) error {
-	infoHash := th.infoHashFromMagnet(magnet)
+	infoHash := utils.InfoHashFromMagnet(magnet)
 
 	if infoHash == "" {
 		return fmt.Errorf("invalid magnet link")
@@ -77,7 +99,7 @@ func (th *TorrentHandler) RemoveTorrent(magnet string) error {
 }
 
 func (th *TorrentHandler) GetTorrentFiles(magnet string) ([]qbt.TorrentFile, error) {
-	infoHash := th.infoHashFromMagnet(magnet)
+	infoHash := utils.InfoHashFromMagnet(magnet)
 
 	if infoHash == "" {
 		return nil, fmt.Errorf("invalid magnet link")
@@ -89,13 +111,4 @@ func (th *TorrentHandler) GetTorrentFiles(magnet string) ([]qbt.TorrentFile, err
 	}
 
 	return files, nil
-}
-
-func (th *TorrentHandler) infoHashFromMagnet(magnet string) string {
-	r, _ := regexp.Compile(`urn:btih:([a-fA-F0-9]{40})`)
-	matches := r.FindStringSubmatch(magnet)
-	if len(matches) > 1 {
-		return strings.ToLower(matches[1])
-	}
-	return ""
 }
